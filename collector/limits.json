@@ -1,0 +1,10 @@
+{
+  "_comentario": "Limites calibráveis para o cálculo de percentual de cota do Claude Code. O Codex NÃO usa este arquivo: ele já vem com used_percent pronto em rate_limits (ver VALIDATION.md secao 3).",
+  "_como_calibrar": "Regra de três: abra a CLI do Claude Code, veja o percentual real de uso da sessão/semana (comando /usage ou equivalente da sua versão). No mesmo instante, chame http://localhost:8787/quota e anote o total bruto de tokens somado internamente (log do quota_server.py em modo debug, ou instrumente temporariamente). Calcule: novo_limite = tokens_somados_pelo_coletor * 100 / percentual_mostrado_pela_cli. Substitua o valor abaixo pelo resultado. Repita sempre que o plano/limite contratado mudar.",
+  "claude": {
+    "session_window_hours": 5,
+    "session_token_limit": 192501582,
+    "week_window_days": 7,
+    "week_token_limit": 348336195
+  }
+}

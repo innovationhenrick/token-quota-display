@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.rick.quotadisplay</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/usr/bin/python3</string>
+        <string>__RUNTIME_DIR__/quota_server.py</string>
+    </array>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>KeepAlive</key>
+    <true/>
+
+    <key>StandardOutPath</key>
+    <string>/tmp/com.rick.quotadisplay.out.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/tmp/com.rick.quotadisplay.err.log</string>
+
+    <key>WorkingDirectory</key>
+    <string>__RUNTIME_DIR__</string>
+</dict>
+</plist>

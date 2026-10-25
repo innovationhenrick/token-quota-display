@@ -1,0 +1,6 @@
+firmware/secrets.h
+__pycache__/
+collector/__pycache__/
+*.pyc
+.DS_Store
+
