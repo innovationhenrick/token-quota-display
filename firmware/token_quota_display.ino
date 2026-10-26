@@ -55,7 +55,7 @@
 #define LVGL_BUF_LINES 40
 
 // Incrementar VERSION_CODE a cada firmware publicado via OTA.
-static const uint32_t FIRMWARE_VERSION_CODE = 2026102446UL;
+static const uint32_t FIRMWARE_VERSION_CODE = 2026102447UL;
 static const uint32_t OTA_CHECK_INTERVAL_MS = 6UL * 60UL * 60UL * 1000UL;
 static const char *OTA_MANIFEST_PATH = "/firmware/manifest.json";
 static const char *OTA_BINARY_PATH = "/firmware/token_quota_display.bin";
@@ -197,6 +197,7 @@ struct SummaryUI {
   lv_obj_t *label_reset_sw_weight;
   lv_obj_t *label_reset_se_weight;
   lv_obj_t *label_active_name;
+  lv_obj_t *label_active_name_weight;
   lv_obj_t *label_active_pct;
   lv_obj_t *model_dots[4];
 };
@@ -759,8 +760,12 @@ static void update_summary_reset_labels() {
   char percent[12];
   snprintf(percent, sizeof(percent), "%d%%", active_pct);
   lv_label_set_text(g_summary.label_active_name, model_names[g_active_reset_model]);
+  lv_label_set_text(g_summary.label_active_name_weight,
+                    model_names[g_active_reset_model]);
   lv_label_set_text(g_summary.label_active_pct, percent);
   lv_obj_set_style_text_color(g_summary.label_active_name,
+                              color_hex(model_colors[g_active_reset_model]), 0);
+  lv_obj_set_style_text_color(g_summary.label_active_name_weight,
                               color_hex(model_colors[g_active_reset_model]), 0);
   char duration[20];
   format_duration(countdown_minutes(reset_min), duration, sizeof(duration));
@@ -865,11 +870,14 @@ static void build_summary_screen() {
   g_summary.label_reset_sw_weight = make_diagonal_reset_label(g_summary.screen);
   g_summary.label_reset_se_weight = make_diagonal_reset_label(g_summary.screen);
   g_summary.label_active_name = make_label(
-    g_summary.screen, "CLAUDE", COLOR_CLAUDE, &lv_font_montserrat_16,
-    LV_ALIGN_CENTER, 0, -8);
+    g_summary.screen, "CLAUDE", COLOR_CLAUDE, &lv_font_montserrat_20,
+    LV_ALIGN_CENTER, 0, -10);
+  g_summary.label_active_name_weight = make_label(
+    g_summary.screen, "CLAUDE", COLOR_CLAUDE, &lv_font_montserrat_20,
+    LV_ALIGN_CENTER, 1, -10);
   g_summary.label_active_pct = make_label(
     g_summary.screen, "0%", COLOR_TEXT, &lv_font_montserrat_20,
-    LV_ALIGN_CENTER, 0, 10);
+    LV_ALIGN_CENTER, 0, 12);
   make_summary_model_dots(g_summary.screen);
   update_summary_reset_labels();
 }
