@@ -55,7 +55,7 @@
 #define LVGL_BUF_LINES 40
 
 // Incrementar VERSION_CODE a cada firmware publicado via OTA.
-static const uint32_t FIRMWARE_VERSION_CODE = 2026102448UL;
+static const uint32_t FIRMWARE_VERSION_CODE = 2026102449UL;
 static const uint32_t OTA_CHECK_INTERVAL_MS = 6UL * 60UL * 60UL * 1000UL;
 static const char *OTA_MANIFEST_PATH = "/firmware/manifest.json";
 static const char *OTA_BINARY_PATH = "/firmware/token_quota_display.bin";
@@ -253,7 +253,8 @@ static uint32_t g_alert_until = 0;
 static volatile bool g_sync_requested = false;
 static uint8_t g_active_reset_model = 0;
 static uint32_t g_last_reset_model_switch_ms = 0;
-static const uint32_t SUMMARY_MODEL_SWITCH_MS = 4000;
+// Oito segundos dão tempo para ler nome, percentual e dois resets.
+static const uint32_t SUMMARY_MODEL_SWITCH_MS = 8000;
 
 static void set_status(const char *message);
 static int countdown_minutes(int base_minutes);
