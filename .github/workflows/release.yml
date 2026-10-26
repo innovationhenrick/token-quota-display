@@ -1,0 +1,40 @@
+name: Release de fonte
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write
+
+jobs:
+  package:
+    name: Empacotar fonte
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar código
+        uses: actions/checkout@v4
+
+      - name: Criar pacote reproduzível
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          git archive \
+            --format=tar.gz \
+            --prefix="token-quota-display-${GITHUB_REF_NAME}/" \
+            --output="dist/token-quota-display-${GITHUB_REF_NAME}.tar.gz" \
+            HEAD
+          sha256sum "dist/token-quota-display-${GITHUB_REF_NAME}.tar.gz" \
+            > "dist/token-quota-display-${GITHUB_REF_NAME}.sha256"
+
+      - name: Publicar release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" \
+            dist/token-quota-display-${GITHUB_REF_NAME}.tar.gz \
+            dist/token-quota-display-${GITHUB_REF_NAME}.sha256 \
+            --title "${GITHUB_REF_NAME}" \
+            --generate-notes

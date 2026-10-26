@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  collector:
+    name: Coletor Python
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar código
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Validar sintaxe Python
+        run: python -m compileall -q collector
+
+      - name: Validar limites JSON
+        run: python -m json.tool collector/limits.json >/dev/null
+
+      - name: Executar testes do coletor
+        working-directory: collector
+        run: python -m unittest discover -s . -p 'test_*.py' -v
+
+  hygiene:
+    name: Higiene do repositório
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar código
+        uses: actions/checkout@v4
+
+      - name: Impedir credenciais do firmware
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git ls-files --error-unmatch firmware/secrets.h >/dev/null 2>&1; then
+            echo 'firmware/secrets.h não pode ser versionado.' >&2
+            exit 1
+          fi
+
+      - name: Verificar arquivos temporários rastreados
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git ls-files | grep -E '(^|/)(__pycache__|.*\.pyc$|\.DS_Store$)' >/dev/null; then
+            echo 'Há arquivos temporários rastreados.' >&2
+            exit 1
+          fi

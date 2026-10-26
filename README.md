@@ -7,6 +7,8 @@
 [![Python 3.9+](https://img.shields.io/badge/collector-Python%203.9%2B-3776ab?logo=python&logoColor=white)](https://www.python.org/)
 [![Status](https://img.shields.io/badge/status-experimental-f2a663)](VALIDATION.md)
 
+Fluxo de mudanças e releases: [DEVOPS.md](DEVOPS.md) · Pull requests passam pela [CI do GitHub](.github/workflows/ci.yml).
+
 O projeto combina um **ESP32-C3 com display redondo GC9A01/CST816D (240×240)** e um coletor local no macOS. O coletor consulta as fontes disponíveis para **Claude, Codex, Gemini/Antigravity e Grok**, normaliza os dados e entrega um JSON pequeno ao dispositivo pela rede Wi‑Fi.
 
 O firmware mostra percentuais, janelas de 5 horas ou 7 dias, contagem regressiva até o reset, histórico recente e mascotes pixel-art. Nenhuma credencial ou conteúdo de prompt é enviado ao ESP32: somente o resumo agregado de uso atravessa a LAN.
@@ -176,6 +178,7 @@ token-quota-display/
 - [OTA.md](OTA.md) — fluxo de atualização remota do firmware.
 - [QUOTAS_EXTERNAS.md](QUOTAS_EXTERNAS.md) — limitações e fallback das cotas externas.
 - [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) — bibliotecas e avisos de terceiros.
+- [DEVOPS.md](DEVOPS.md) — branches, pull requests, CI, releases e rollback.
 
 ## Roadmap
 
