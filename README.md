@@ -1,191 +1,196 @@
 # Token Quota Display
 
-Painel físico redondo (ESP32-C3 + GC9A01/CST816D 240x240) para acompanhar as
-cotas do **Claude Code**, **Codex CLI**, **Gemini** e **Grok** em tempo real.
-Mostra as janelas de 5h e 7 dias, countdown de reset, tokens, projeção e
-mascotes pixel-art reativos.
-Nenhuma credencial é enviada ao firmware: apenas o JSON agregado trafega na LAN.
+> Um mostrador circular para enxergar, de relance, o consumo e o próximo reset das cotas de IA.
 
-Ver [VALIDATION.md](VALIDATION.md) para o levantamento completo dos caminhos
-de log, esquemas de campo e decisões tomadas antes de codar.
+[![ESP32-C3](https://img.shields.io/badge/hardware-ESP32--C3-0b8f87?logo=espressif)](https://www.espressif.com/en/products/socs/esp32-c3)
+[![LVGL 9](https://img.shields.io/badge/UI-LVGL%209-4051b5)](https://lvgl.io/)
+[![Python 3.9+](https://img.shields.io/badge/collector-Python%203.9%2B-3776ab?logo=python&logoColor=white)](https://www.python.org/)
+[![Status](https://img.shields.io/badge/status-experimental-f2a663)](VALIDATION.md)
 
-## Arquitetura
+O projeto combina um **ESP32-C3 com display redondo GC9A01/CST816D (240×240)** e um coletor local no macOS. O coletor consulta as fontes disponíveis para **Claude, Codex, Gemini/Antigravity e Grok**, normaliza os dados e entrega um JSON pequeno ao dispositivo pela rede Wi‑Fi.
 
+O firmware mostra percentuais, janelas de 5 horas ou 7 dias, contagem regressiva até o reset, histórico recente e mascotes pixel-art. Nenhuma credencial ou conteúdo de prompt é enviado ao ESP32: somente o resumo agregado de uso atravessa a LAN.
+
+## O que este projeto resolve
+
+- **Visão imediata:** quatro anéis concêntricos deixam o percentual legível sem abrir uma aplicação.
+- **Tempo até o reset:** os rótulos diagonais exibem a janela ativa e o countdown correspondente.
+- **Múltiplos provedores:** Claude e Codex usam as cotas de sessão/semana; Gemini e Grok usam a janela semanal quando disponível.
+- **Atualização automática:** o coletor mantém cache curto e o ESP32 faz polling periódico, sem exigir intervenção manual.
+- **Operação segura:** credenciais ficam em `firmware/secrets.h`, ignorado pelo Git; o firmware recebe apenas o contrato `/quota`.
+
+## Visão geral da arquitetura
+
+```text
+Claude / Codex / Antigravity / Grok
+            │ endpoints, CLI e caches locais
+            ▼
+    collector/quota_server.py
+      cache de 5 s + histórico
+            │ HTTP GET /quota :8787
+            ▼ Wi‑Fi 2,4 GHz
+   ESP32-C3 + LVGL + GC9A01
 ```
-Claude/Codex usage endpoints ──┐
-                               ├─> collector/quota_server.py ──> GET /quota ──Wi-Fi──> ESP32-C3
-logs locais (fallback/tokens) ─┘       cache 5s + histórico
-```
 
-Contrato JSON estável, servido em `http://<ip-do-mac>:8787/quota`:
-```json
-{"claude":{"session_pct":int,"week_pct":int,
- "session_reset_min":int|null,"week_reset_min":int|null,
- "session_tokens":int,"projection_min":int|null,"projected_pct_at_reset":int|null},
- "codex":{"...":"mesmos campos"},
- "updated":epoch_seconds}
-```
+O coletor roda como processo local ou LaunchAgent. O display descobre o Mac por mDNS e mantém um IP de fallback configurável para redes onde o mDNS não estiver disponível.
 
-## 1. Coletor (Mac)
+## Começo rápido
 
-### Rodar manualmente
+### 1. Inicie o coletor no Mac
+
 ```bash
 cd token-quota-display/collector
 python3 quota_server.py
-# em outro terminal:
-curl -s http://localhost:8787/quota
+
+# confirme o contrato antes de ligar o hardware
+curl -s http://localhost:8787/quota | python3 -m json.tool
 ```
 
-### Rodar os testes
-```bash
-cd token-quota-display/collector
-python3 -m unittest test_quota.py -v
-```
-
-### Fontes e fallback
-
-O coletor consulta os endpoints de uso das contas já autenticadas no Claude
-Code e Codex. Se uma chamada falhar, cai automaticamente nos logs locais. No
-fallback do Claude, `collector/limits.json` continua sendo usado para estimar o
-percentual. Os endpoints não são contratos públicos estáveis e podem mudar.
-
-Para calibrar o fallback do Claude:
-
-1. Abra a CLI do Claude Code e veja o percentual real de uso (comando de
-   status/uso da sua versão).
-2. No mesmo instante, rode `curl -s http://localhost:8787/quota` e anote o
-   `session_pct`/`week_pct` retornado.
-3. Regra de três: `novo_limite = limite_atual * percentual_real / percentual_mostrado`.
-4. Edite `session_token_limit` / `week_token_limit` em `collector/limits.json`.
-
-O Codex **não precisa de calibração** — ele já expõe `used_percent` pronto em
-`rate_limits` (ver VALIDATION.md, seção 3).
-
-### Instalar como serviço em background (LaunchAgent)
+Para manter o processo ativo em segundo plano:
 
 ```bash
 collector/install_service.sh
-
-# verificar se está rodando
 launchctl print gui/$(id -u)/com.rick.quotadisplay
-curl -s http://localhost:8787/quota
-
-# parar/desinstalar
-launchctl bootout gui/$(id -u)/com.rick.quotadisplay
 ```
 
-Logs do serviço: `/tmp/com.rick.quotadisplay.out.log` e `.err.log`.
+O instalador copia o runtime para `~/Library/Application Support/TokenQuotaDisplay`, evitando as restrições do macOS para LaunchAgents executados diretamente no Google Drive.
 
-O instalador copia o runtime para
-`~/Library/Application Support/TokenQuotaDisplay`, evitando o bloqueio TCC do
-macOS contra scripts executados pelo LaunchAgent dentro do Google Drive.
+### 2. Configure as credenciais do firmware
 
-## 2. Firmware (ESP32-2424S012)
-
-### Dependências (Arduino IDE — Library Manager)
-- `GFX Library for Arduino` (moononournation/Arduino_GFX) — driver GC9A01
-- `lvgl` (versão 9.x)
-- `ArduinoJson` (versão 7.x)
-- Core `esp32` da Espressif instalado (Boards Manager) — necessário para a
-  placa "ESP32C3 Dev Module"
-
-### Configuração da placa
-Arduino IDE → Tools:
-- Board: **ESP32C3 Dev Module**
-- USB CDC On Boot: **Enabled**
-- CPU Frequency: **160MHz**
-- Flash Frequency: **80MHz**, modo **QIO**
-- Flash Size: **4MB**
-- Partition Scheme: **Minimal SPIFFS**
-- Upload Speed: **921600**
-- JTAG Adapter: **Disabled**
-- Port: `/dev/cu.usbmodem3101`
-
-### lv_conf.h
-O `lv_conf.h` deste projeto já vem ajustado para o C3 sem PSRAM
-(`LV_COLOR_DEPTH 16`, `LV_MEM_SIZE` reduzido, fontes 12/14/16/20 e somente os
-widgets necessários). Copie-o para onde sua instalação
-do LVGL espera encontrá-lo — normalmente ao lado da pasta `lvgl/` em
-`Documents/Arduino/libraries/`, ou na raiz do sketch se sua versão da
-biblioteca lê `lv_conf.h` local primeiro.
-
-### secrets.h
 ```bash
 cp firmware/secrets.h.example firmware/secrets.h
 ```
-Edite `firmware/secrets.h` com o SSID/senha da rede 2.4GHz e a URL do
-coletor. Para descobrir o IP local do Mac na LAN:
+
+Preencha a rede Wi‑Fi 2,4 GHz e, se necessário, o IP de fallback do Mac. Para descobrir o IP local:
+
 ```bash
 ipconfig getifaddr en0
 ```
-`secrets.h` não deve ser commitado — adicione ao `.gitignore` do repositório
-se ainda não estiver.
 
-### Build e flash pelo CLI
-1. Conecte o ESP32-2424S012 via USB.
-2. Selecione a porta `/dev/cu.usbmodem3101` (USB CDC nativo do C3 — nenhum
-   driver CH340 necessário).
-Use os comandos de `arduino-cli` documentados em `HANDOFF_CODEX.md`; a pasta
-temporária precisa se chamar `token_quota_display` e conter também `secrets.h`.
+`firmware/secrets.h` é local e não deve ser commitado.
 
-### Interface
+### 3. Compile e grave o ESP32-C3
 
-- Tela central: quatro anéis concêntricos, modelo ativo, percentual e countdown.
-- O modelo ativo alterna entre Claude, Codex, Grok e Gemini a cada 4 segundos.
-- Os diagonais usam siglas curtas (`5H`/`7D`) e tempos de reset sem texto curvo,
-  mantendo a leitura nítida no display circular.
-- Swipe para a esquerda/direita: detalhes de 5h e 7 dias de cada modelo.
-- O dashboard usa fundo azul-ardósia e uma paleta de baixo brilho para reduzir
-  halos e facilitar a leitura.
-- Clawd em silhueta pixel-art clássica; Codex usa uma marca técnica geométrica,
-  pois não existe mascote oficial. Piscam/pulsam em estado normal, indicam
-  esforço a partir de 70% e tremem em 100%.
-- No resumo, Claude é âmbar, Codex é ciano, Grok é branco-gelo e Gemini é
-  dourado suave. O anel ativo recebe destaque e os demais são suavizados.
-- Alertas quando uma das janelas cruza 25%, 50%, 70% ou 100%; o primeiro poll
-  após ligar apenas inicializa o estado e não dispara alertas antigos.
+Use Arduino IDE ou `arduino-cli` com:
 
-### Teste de ponta a ponta
-1. Coletor rodando no Mac (`python3 quota_server.py` ou via LaunchAgent) e
-   acessível na LAN (`curl -s http://<ip-do-mac>:8787/quota` de outro
-   dispositivo na mesma rede, para confirmar que não é bloqueado por
-   firewall).
-2. ESP32 ligado e conectado à mesma rede 2.4GHz.
-3. Em até 10s (intervalo de polling), os arcos devem preencher com os
-   percentuais reais.
-4. Desligue o coletor (`launchctl unload ...` ou `Ctrl+C` no processo
-   manual) e confirme que a tela mostra o label de erro de HTTP em até 60s.
-5. Corrompa temporariamente `limits.json` (ex.: apague uma chave) e confirme
-   que o coletor não quebra — cai no valor default (ver `test_quota.py`).
+| Opção | Valor |
+|---|---|
+| Placa | `ESP32C3 Dev Module` |
+| USB CDC On Boot | `Enabled` |
+| CPU | `160MHz` |
+| Flash | `4MB`, `QIO`, `Minimal SPIFFS` |
+| Upload | `921600` |
+| Porta | `/dev/cu.usbmodem3101` (exemplo) |
 
-## 3. Troubleshooting
+Dependências do Library Manager: **GFX Library for Arduino**, **LVGL 9.x** e **ArduinoJson 7.x**. O `firmware/lv_conf.h` já reduz fontes e widgets para caber no C3 sem PSRAM.
 
-| Sintoma | Causa provável | Ação |
-|---|---|---|
-| `curl` no Mac não retorna nada | Servidor não está rodando | `python3 quota_server.py` manualmente e observar erro no terminal |
-| `curl` de outro dispositivo na LAN falha, mas `localhost` funciona | Firewall do macOS bloqueando porta 8787 | System Settings → Network → Firewall → permitir Python/porta 8787 |
-| ESP32 não aparece em `/dev/cu.usbmodem*` | Cabo USB só de energia, ou placa não em modo correto | Trocar cabo (precisa de dados), verificar se `USB CDC On Boot = Enabled` está selecionado antes de compilar |
-| Compilação falha por falta de memória / overflow de flash | Partition Scheme errado, ou bibliotecas extras habilitadas no `lv_conf.h` | Confirmar "Minimal SPIFFS"; manter os widgets desligados no `lv_conf.h` como entregue |
-| Tela liga mas fica preta | Backlight (pino 3) não está em HIGH, ou driver GC9A01 com rotação/IPS errados | Conferir `pinMode(PIN_BL, OUTPUT); digitalWrite(PIN_BL, HIGH);` no `setup()` |
-| Label "Sem Wi-Fi" não some | SSID/senha errados em `secrets.h`, ou rede é 5GHz (C3 só suporta 2.4GHz) | Revisar `secrets.h`; confirmar que a rede é 2.4GHz |
-| Label "Erro HTTP: conexao" | Coletor não acessível no IP configurado, ou IP do Mac mudou (DHCP) | Reconferir `ipconfig getifaddr en0` e atualizar `QUOTA_SERVER_URL` em `secrets.h` |
-| `claude.session_pct` sempre 100% ou sempre 0% | `limits.json` descalibrado | Seguir o passo de calibração acima |
-| Testes do coletor falham | Ambiente Python diferente do esperado (versão antiga sem `zoneinfo`/`fromisoformat` com `Z`) | Confirmar Python 3.9+ (o parser usa `str.replace('Z','+00:00')`, funciona desde 3.7, mas teste em 3.9+ é o alvo) |
+## Contrato da API
+
+O endpoint é `GET http://<ip-do-mac>:8787/quota`:
+
+```json
+{
+  "claude": {
+    "session_pct": 12,
+    "week_pct": 8,
+    "session_reset_min": 132,
+    "week_reset_min": 1530,
+    "session_tokens": 123456,
+    "projection_min": 98,
+    "projected_pct_at_reset": 18
+  },
+  "codex": { "session_pct": 4, "week_pct": 2 },
+  "gemini": {
+    "week_pct": 5,
+    "week_remaining_pct": 95,
+    "week_reset_min": 6120,
+    "quota_kind": "weekly"
+  },
+  "grok": {
+    "week_pct": 14,
+    "week_remaining_pct": 86,
+    "week_reset_min": 8280,
+    "quota_kind": "weekly"
+  },
+  "updated": 1730000000
+}
+```
+
+Campos ausentes ou fontes indisponíveis são representados como `null`/`available: false`; o firmware preserva a última leitura válida e sinaliza dados antigos. O schema detalhado e a origem de cada campo estão em [VALIDATION.md](VALIDATION.md).
+
+## Interface no display
+
+- **Overview:** quatro anéis concêntricos, rótulos fixos de `100%`, `25%`, `50%` e `75%`, modelo ativo no centro e percentual em destaque.
+- **Diagonais externas:** siglas curtas (`5H`/`7D`) e tempos de reset, sem texto curvo letra a letra; isso reduz RAM e melhora a leitura no círculo.
+- **Rotação:** Claude, Codex, Grok e Gemini alternam a cada 8 segundos; o ponto de paginação acompanha o modelo ativo.
+- **Foco visual:** o anel ativo mantém a cor cheia e os outros três ficam suavizados para reduzir halo e facilitar a leitura.
+- **Paleta:** Claude âmbar, Codex ciano, Grok branco-gelo e Gemini azul-celeste; textos usam branco suave em vez de branco estourado.
+- **Detalhes:** deslize para os lados para consultar as telas de 5 horas e 7 dias de cada modelo.
+- **Estados:** mascotes reagem ao nível de uso; alertas aparecem quando uma janela cruza 25%, 50%, 70% ou 100%.
+
+## Fontes de dados e fallback
+
+O coletor tenta primeiro as fontes de uso autenticadas e faz fallback para logs/cache locais quando uma chamada falha. O Claude pode ser calibrado em `collector/limits.json`; o Codex expõe `used_percent` em `rate_limits` e não usa esse arquivo. Gemini/Antigravity e Grok têm cache próprio e marcam a leitura como antiga quando o CLI ou a fonte externa não está disponível.
+
+Os endpoints de terceiros não são contratos públicos estáveis. Por isso o servidor expõe um schema estável para o firmware e concentra as adaptações em um único processo Python.
+
+## Operação e troubleshooting
+
+| Sintoma | Verificação rápida |
+|---|---|
+| `curl` local não retorna | Rode `python3 collector/quota_server.py` e veja o erro no terminal. |
+| Outro dispositivo não acessa a porta 8787 | Libere Python/8787 no firewall do macOS e confirme o IP da interface ativa. |
+| ESP32 fica em “Sem Wi‑Fi” | Confira SSID/senha, rede 2,4 GHz e `firmware/secrets.h`. |
+| ESP32 fica em “Erro HTTP” | Confira se o Mac está na mesma LAN e se o fallback/IP mDNS está correto. |
+| Percentual do Claude parece incorreto | Recalibre `collector/limits.json` seguindo a seção de calibração do README e `VALIDATION.md`. |
+| Tela liga, mas fica preta | Confirme backlight no pino 3, rotação GC9A01 e a alimentação USB. |
+
+Logs do LaunchAgent ficam em `/tmp/com.rick.quotadisplay.out.log` e `/tmp/com.rick.quotadisplay.err.log`.
 
 ## Estrutura do projeto
 
-```
+```text
 token-quota-display/
-├── VALIDATION.md                       # Fase 1: validação dos logs reais
-├── README.md                           # este arquivo
+├── README.md                         # visão geral e quick start
+├── VALIDATION.md                     # fontes, schema e decisões de validação
+├── HANDOFF_CODEX.md                  # build/upload pelo CLI
+├── OTA.md                            # publicação opcional de firmware
+├── QUOTAS_EXTERNAS.md                # notas de Gemini/Antigravity e Grok
 ├── collector/
-│   ├── quota_server.py                 # servidor HTTP stdlib, GET /quota
-│   ├── limits.json                     # limites calibráveis (Claude)
-│   ├── test_quota.py                   # testes com fixtures sintéticas
-│   ├── install_service.sh               # instala runtime + LaunchAgent
-│   └── com.rick.quotadisplay.plist     # template RunAtLoad + KeepAlive
+│   ├── quota_server.py               # servidor HTTP stdlib, GET /quota
+│   ├── limits.json                   # limites calibráveis do Claude
+│   ├── install_service.sh            # instala o LaunchAgent
+│   ├── publish_ota.sh                 # publica binário/manifest para OTA
+│   └── test_*.py                     # fixtures e testes do coletor
 └── firmware/
-    ├── token_quota_display.ino         # Arduino + LVGL 9 + Arduino_GFX + ArduinoJson
-    ├── lv_conf.h                       # config LVGL ajustada ao C3 sem PSRAM
-    └── secrets.h.example                # template de credenciais (copiar para secrets.h)
+    ├── token_quota_display.ino       # Arduino + LVGL + Arduino_GFX
+    ├── arduino_entrypoint.ino        # entrypoint para o fluxo Arduino CLI
+    ├── lv_conf.h                     # configuração LVGL para o C3
+    └── secrets.h.example             # template sem credenciais
 ```
+
+## Documentação complementar
+
+- [VALIDATION.md](VALIDATION.md) — como cada fonte foi validada e quais campos são confiáveis.
+- [HANDOFF_CODEX.md](HANDOFF_CODEX.md) — compilação, upload e verificação serial.
+- [OTA.md](OTA.md) — fluxo de atualização remota do firmware.
+- [QUOTAS_EXTERNAS.md](QUOTAS_EXTERNAS.md) — limitações e fallback das cotas externas.
+- [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) — bibliotecas e avisos de terceiros.
+
+## Roadmap
+
+- [x] Coletor local com contrato único e cache curto.
+- [x] Overview circular com foco no modelo ativo.
+- [x] Claude, Codex, Gemini/Antigravity e Grok no mesmo payload.
+- [x] Serviço persistente no macOS e publicação OTA preparada.
+- [ ] Tela de histórico diário/semanal com tendência de consumo.
+- [ ] Descoberta automática do coletor na LAN sem IP de fallback.
+- [ ] Testes de contrato executados no CI do repositório.
+
+## Contribuindo
+
+Abra uma issue descrevendo o provedor, a fonte de dados e um exemplo anonimizado do payload. Para mudanças no firmware, inclua a placa, a revisão do display e uma foto ou captura da tela afetada. Nunca envie tokens, cookies, `secrets.h`, logs com prompts ou dados pessoais.
+
+## Licença
+
+O repositório ainda não declara uma licença de distribuição. Antes de reutilizar o código em outro produto, alinhe a licença e os avisos de terceiros com os mantenedores.
