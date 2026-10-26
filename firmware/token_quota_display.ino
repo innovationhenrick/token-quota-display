@@ -55,7 +55,7 @@
 #define LVGL_BUF_LINES 40
 
 // Incrementar VERSION_CODE a cada firmware publicado via OTA.
-static const uint32_t FIRMWARE_VERSION_CODE = 2026102449UL;
+static const uint32_t FIRMWARE_VERSION_CODE = 2026102450UL;
 static const uint32_t OTA_CHECK_INTERVAL_MS = 6UL * 60UL * 60UL * 1000UL;
 static const char *OTA_MANIFEST_PATH = "/firmware/manifest.json";
 static const char *OTA_BINARY_PATH = "/firmware/token_quota_display.bin";
@@ -80,9 +80,9 @@ static const uint32_t COLOR_TRACK = 0x1E2A40;
 static const uint32_t COLOR_TEXT = 0xDCE4EC;
 static const uint32_t COLOR_MUTED = 0xB7C0CA;
 // Cores deliberadamente separadas por matiz para leitura rápida no carrossel.
-static const uint32_t COLOR_CLAUDE = 0xE67E45;
+static const uint32_t COLOR_CLAUDE = 0xF2A36B;
 static const uint32_t COLOR_CODEX = 0x20C997;
-static const uint32_t COLOR_GEMINI = 0x568DEF;
+static const uint32_t COLOR_GEMINI = 0x78B7FF;
 // O símbolo do Grok é monocromático; branco mantém a leitura sem competir
 // com o azul do Gemini.
 static const uint32_t COLOR_GROK = 0xDCE4EC;
