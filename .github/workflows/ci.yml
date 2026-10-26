@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Baixar código
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Configurar Python
         uses: actions/setup-python@v5
@@ -42,7 +42,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Baixar código
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Impedir credenciais do firmware
         shell: bash
