@@ -55,7 +55,7 @@
 #define LVGL_BUF_LINES 40
 
 // Incrementar VERSION_CODE a cada firmware publicado via OTA.
-static const uint32_t FIRMWARE_VERSION_CODE = 2026102443UL;
+static const uint32_t FIRMWARE_VERSION_CODE = 2026102444UL;
 static const uint32_t OTA_CHECK_INTERVAL_MS = 6UL * 60UL * 60UL * 1000UL;
 static const char *OTA_MANIFEST_PATH = "/firmware/manifest.json";
 static const char *OTA_BINARY_PATH = "/firmware/token_quota_display.bin";
@@ -76,20 +76,20 @@ static lv_color_t g_lvgl_buffer[SCREEN_W * LVGL_BUF_LINES];
 static const uint32_t COLOR_BG = 0x121C2E;
 static const uint32_t COLOR_SURFACE = 0x111820;
 static const uint32_t COLOR_SURFACE_ALT = 0x27313D;
-static const uint32_t COLOR_TRACK = 0x24324A;
-static const uint32_t COLOR_TEXT = 0xE8EEF5;
+static const uint32_t COLOR_TRACK = 0x1E2A40;
+static const uint32_t COLOR_TEXT = 0xDCE4EC;
 static const uint32_t COLOR_MUTED = 0xB7C0CA;
-static const uint32_t COLOR_CLAUDE = 0xF2A663;
-static const uint32_t COLOR_CODEX = 0x2CE0C8;
-static const uint32_t COLOR_GEMINI = 0xF5CC4D;
+static const uint32_t COLOR_CLAUDE = 0xD98C5A;
+static const uint32_t COLOR_CODEX = 0x23BBA8;
+static const uint32_t COLOR_GEMINI = 0xC4A43F;
 // O símbolo do Grok é monocromático; branco mantém a leitura sem competir
 // com o azul do Gemini.
-static const uint32_t COLOR_GROK = 0xE8EEF5;
-static const uint32_t COLOR_CLAUDE_TRACK = 0x24324A;
-static const uint32_t COLOR_CODEX_TRACK = 0x1D4050;
-static const uint32_t COLOR_GEMINI_TRACK = 0x3D3A2D;
-static const uint32_t COLOR_GROK_TRACK = 0x354152;
-static const uint32_t COLOR_RESET_TEXT = 0xE8EEF5;
+static const uint32_t COLOR_GROK = 0xDCE4EC;
+static const uint32_t COLOR_CLAUDE_TRACK = 0x1E2A40;
+static const uint32_t COLOR_CODEX_TRACK = 0x1B3944;
+static const uint32_t COLOR_GEMINI_TRACK = 0x353125;
+static const uint32_t COLOR_GROK_TRACK = 0x303946;
+static const uint32_t COLOR_RESET_TEXT = 0xDCE4EC;
 // Paleta dessaturada para reduzir brilho e halos no ceratocone.
 static const uint32_t COLOR_USAGE_GREEN = 0x78B892;
 static const uint32_t COLOR_USAGE_YELLOW = 0xC9B56A;
@@ -667,7 +667,9 @@ static lv_obj_t *make_diagonal_reset_label(lv_obj_t *parent) {
   lv_obj_t *label = lv_label_create(parent);
   lv_obj_remove_style_all(label);
   lv_label_set_text(label, "");
-  lv_obj_set_style_text_font(label, &lv_font_montserrat_12, 0);
+  // 16px aumenta o peso aparente com a fonte compacta disponível no C3,
+  // sem usar outline/glow que agravaria o halo visual.
+  lv_obj_set_style_text_font(label, &lv_font_montserrat_16, 0);
   lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, 0);
   lv_obj_set_style_text_color(label, color_hex(COLOR_TEXT), 0);
   lv_obj_clear_flag(label, LV_OBJ_FLAG_CLICKABLE);
@@ -822,19 +824,19 @@ static void build_summary_screen() {
   g_summary.label_codex_reset = NULL;
   g_summary.label_gemini_week = NULL;
   g_summary.label_gemini_pct = make_label(
-    g_summary.screen, "75%", COLOR_TEXT, &lv_font_montserrat_14,
+    g_summary.screen, "75%", COLOR_TEXT, &lv_font_montserrat_16,
     LV_ALIGN_LEFT_MID, 2, 0);
   g_summary.label_gemini_reset = NULL;
   g_summary.label_grok_week = NULL;
   g_summary.label_grok_pct = make_label(
-    g_summary.screen, "50%", COLOR_TEXT, &lv_font_montserrat_14,
+    g_summary.screen, "50%", COLOR_TEXT, &lv_font_montserrat_16,
     LV_ALIGN_BOTTOM_MID, 0, -12);
   g_summary.label_grok_reset = NULL;
   g_summary.label_claude_pct = make_label(
-    g_summary.screen, "100%", COLOR_TEXT, &lv_font_montserrat_14,
+    g_summary.screen, "100%", COLOR_TEXT, &lv_font_montserrat_16,
     LV_ALIGN_TOP_MID, 0, 2);
   g_summary.label_codex_pct = make_label(
-    g_summary.screen, "25%", COLOR_TEXT, &lv_font_montserrat_14,
+    g_summary.screen, "25%", COLOR_TEXT, &lv_font_montserrat_16,
     LV_ALIGN_RIGHT_MID, -2, 0);
   g_summary.label_status = NULL;
   g_summary.label_reset_nw = make_diagonal_reset_label(g_summary.screen);
@@ -842,7 +844,7 @@ static void build_summary_screen() {
   g_summary.label_reset_sw = make_diagonal_reset_label(g_summary.screen);
   g_summary.label_reset_se = make_diagonal_reset_label(g_summary.screen);
   g_summary.label_active_name = make_label(
-    g_summary.screen, "CLAUDE", COLOR_CLAUDE, &lv_font_montserrat_12,
+    g_summary.screen, "CLAUDE", COLOR_CLAUDE, &lv_font_montserrat_14,
     LV_ALIGN_CENTER, 0, -8);
   g_summary.label_active_pct = make_label(
     g_summary.screen, "0%", COLOR_TEXT, &lv_font_montserrat_16,
