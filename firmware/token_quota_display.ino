@@ -55,7 +55,7 @@
 #define LVGL_BUF_LINES 40
 
 // Incrementar VERSION_CODE a cada firmware publicado via OTA.
-static const uint32_t FIRMWARE_VERSION_CODE = 2026102444UL;
+static const uint32_t FIRMWARE_VERSION_CODE = 2026102445UL;
 static const uint32_t OTA_CHECK_INTERVAL_MS = 6UL * 60UL * 60UL * 1000UL;
 static const char *OTA_MANIFEST_PATH = "/firmware/manifest.json";
 static const char *OTA_BINARY_PATH = "/firmware/token_quota_display.bin";
@@ -192,6 +192,10 @@ struct SummaryUI {
   lv_obj_t *label_reset_ne;
   lv_obj_t *label_reset_sw;
   lv_obj_t *label_reset_se;
+  lv_obj_t *label_reset_nw_weight;
+  lv_obj_t *label_reset_ne_weight;
+  lv_obj_t *label_reset_sw_weight;
+  lv_obj_t *label_reset_se_weight;
   lv_obj_t *label_active_name;
   lv_obj_t *label_active_pct;
   lv_obj_t *model_dots[4];
@@ -676,18 +680,27 @@ static lv_obj_t *make_diagonal_reset_label(lv_obj_t *parent) {
   return label;
 }
 
-static void set_diagonal_reset_label(lv_obj_t *label, const char *text,
-                                     uint32_t color, float angle) {
+static void set_diagonal_reset_label_one(lv_obj_t *label, const char *text,
+                                         uint32_t color, float angle,
+                                         int x_bias) {
   constexpr float R_DIAG = 92.0f;
   constexpr float ANGLE_TO_RADIANS = 0.01745329252f;
   float radians = angle * ANGLE_TO_RADIANS;
-  int offset_x = (int)lroundf(cosf(radians) * R_DIAG);
+  int offset_x = (int)lroundf(cosf(radians) * R_DIAG) + x_bias;
   int offset_y = (int)lroundf(sinf(radians) * R_DIAG);
   lv_label_set_text(label, text);
   lv_obj_set_style_text_color(label, color_hex(color), 0);
   lv_obj_align(label, LV_ALIGN_CENTER, offset_x, offset_y);
   if (text[0]) lv_obj_remove_flag(label, LV_OBJ_FLAG_HIDDEN);
   else lv_obj_add_flag(label, LV_OBJ_FLAG_HIDDEN);
+}
+
+static void set_diagonal_reset_label(lv_obj_t *label, lv_obj_t *weight,
+                                     const char *text, uint32_t color,
+                                     float angle) {
+  set_diagonal_reset_label_one(label, text, color, angle, 0);
+  // O deslocamento de 1px na horizontal engrossa os glyphs sem sombra difusa.
+  set_diagonal_reset_label_one(weight, text, color, angle, 1);
 }
 
 static void make_summary_model_dots(lv_obj_t *screen) {
@@ -752,9 +765,11 @@ static void update_summary_reset_labels() {
   char duration[20];
   format_duration(countdown_minutes(reset_min), duration, sizeof(duration));
   set_diagonal_reset_label(g_summary.label_reset_nw,
+                           g_summary.label_reset_nw_weight,
                            window_text[g_active_reset_model],
                            model_colors[g_active_reset_model], -135.0f);
-  set_diagonal_reset_label(g_summary.label_reset_ne, duration,
+  set_diagonal_reset_label(g_summary.label_reset_ne,
+                           g_summary.label_reset_ne_weight, duration,
                            COLOR_RESET_TEXT, -45.0f);
 
   // Claude e Codex também têm a janela semanal; Grok e Gemini deixam os
@@ -767,9 +782,11 @@ static void update_summary_reset_labels() {
       ? g_quota.claude.week_reset_min : g_quota.codex.week_reset_min;
   }
   format_duration(countdown_minutes(week_reset_min), duration, sizeof(duration));
-  set_diagonal_reset_label(g_summary.label_reset_sw, week_text,
+  set_diagonal_reset_label(g_summary.label_reset_sw,
+                           g_summary.label_reset_sw_weight, week_text,
                            model_colors[g_active_reset_model], 135.0f);
   set_diagonal_reset_label(g_summary.label_reset_se,
+                           g_summary.label_reset_se_weight,
                            week_text[0] ? duration : "",
                            COLOR_RESET_TEXT, 45.0f);
 
@@ -843,6 +860,10 @@ static void build_summary_screen() {
   g_summary.label_reset_ne = make_diagonal_reset_label(g_summary.screen);
   g_summary.label_reset_sw = make_diagonal_reset_label(g_summary.screen);
   g_summary.label_reset_se = make_diagonal_reset_label(g_summary.screen);
+  g_summary.label_reset_nw_weight = make_diagonal_reset_label(g_summary.screen);
+  g_summary.label_reset_ne_weight = make_diagonal_reset_label(g_summary.screen);
+  g_summary.label_reset_sw_weight = make_diagonal_reset_label(g_summary.screen);
+  g_summary.label_reset_se_weight = make_diagonal_reset_label(g_summary.screen);
   g_summary.label_active_name = make_label(
     g_summary.screen, "CLAUDE", COLOR_CLAUDE, &lv_font_montserrat_14,
     LV_ALIGN_CENTER, 0, -8);
