@@ -55,7 +55,7 @@
 #define LVGL_BUF_LINES 40
 
 // Incrementar VERSION_CODE a cada firmware publicado via OTA.
-static const uint32_t FIRMWARE_VERSION_CODE = 2026102445UL;
+static const uint32_t FIRMWARE_VERSION_CODE = 2026102446UL;
 static const uint32_t OTA_CHECK_INTERVAL_MS = 6UL * 60UL * 60UL * 1000UL;
 static const char *OTA_MANIFEST_PATH = "/firmware/manifest.json";
 static const char *OTA_BINARY_PATH = "/firmware/token_quota_display.bin";
@@ -671,9 +671,9 @@ static lv_obj_t *make_diagonal_reset_label(lv_obj_t *parent) {
   lv_obj_t *label = lv_label_create(parent);
   lv_obj_remove_style_all(label);
   lv_label_set_text(label, "");
-  // 16px aumenta o peso aparente com a fonte compacta disponível no C3,
+  // 20px aumenta o peso aparente com a fonte compacta disponível no C3,
   // sem usar outline/glow que agravaria o halo visual.
-  lv_obj_set_style_text_font(label, &lv_font_montserrat_16, 0);
+  lv_obj_set_style_text_font(label, &lv_font_montserrat_20, 0);
   lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, 0);
   lv_obj_set_style_text_color(label, color_hex(COLOR_TEXT), 0);
   lv_obj_clear_flag(label, LV_OBJ_FLAG_CLICKABLE);
@@ -841,19 +841,19 @@ static void build_summary_screen() {
   g_summary.label_codex_reset = NULL;
   g_summary.label_gemini_week = NULL;
   g_summary.label_gemini_pct = make_label(
-    g_summary.screen, "75%", COLOR_TEXT, &lv_font_montserrat_16,
+    g_summary.screen, "75%", COLOR_TEXT, &lv_font_montserrat_20,
     LV_ALIGN_LEFT_MID, 2, 0);
   g_summary.label_gemini_reset = NULL;
   g_summary.label_grok_week = NULL;
   g_summary.label_grok_pct = make_label(
-    g_summary.screen, "50%", COLOR_TEXT, &lv_font_montserrat_16,
+    g_summary.screen, "50%", COLOR_TEXT, &lv_font_montserrat_20,
     LV_ALIGN_BOTTOM_MID, 0, -12);
   g_summary.label_grok_reset = NULL;
   g_summary.label_claude_pct = make_label(
-    g_summary.screen, "100%", COLOR_TEXT, &lv_font_montserrat_16,
+    g_summary.screen, "100%", COLOR_TEXT, &lv_font_montserrat_20,
     LV_ALIGN_TOP_MID, 0, 2);
   g_summary.label_codex_pct = make_label(
-    g_summary.screen, "25%", COLOR_TEXT, &lv_font_montserrat_16,
+    g_summary.screen, "25%", COLOR_TEXT, &lv_font_montserrat_20,
     LV_ALIGN_RIGHT_MID, -2, 0);
   g_summary.label_status = NULL;
   g_summary.label_reset_nw = make_diagonal_reset_label(g_summary.screen);
@@ -865,10 +865,10 @@ static void build_summary_screen() {
   g_summary.label_reset_sw_weight = make_diagonal_reset_label(g_summary.screen);
   g_summary.label_reset_se_weight = make_diagonal_reset_label(g_summary.screen);
   g_summary.label_active_name = make_label(
-    g_summary.screen, "CLAUDE", COLOR_CLAUDE, &lv_font_montserrat_14,
+    g_summary.screen, "CLAUDE", COLOR_CLAUDE, &lv_font_montserrat_16,
     LV_ALIGN_CENTER, 0, -8);
   g_summary.label_active_pct = make_label(
-    g_summary.screen, "0%", COLOR_TEXT, &lv_font_montserrat_16,
+    g_summary.screen, "0%", COLOR_TEXT, &lv_font_montserrat_20,
     LV_ALIGN_CENTER, 0, 10);
   make_summary_model_dots(g_summary.screen);
   update_summary_reset_labels();
